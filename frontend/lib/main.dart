@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const AIJournal());
@@ -34,24 +36,53 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
   String? _sentimentResults;
   String? _aiFeedback;
 
-  void _submitEntry(){
-    if(_entryController.text.trim().isEmpty) return;
+  Future<void> _submitEntry() async {
+    final  text = _entryController.text.trim();
+    if(text.isEmpty){
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter your journal entry before submitting.")),
+      );
+      return;
+    }
 
     setState(() {
       _isAnalyzing = true;
+      _sentimentResults = null;
+      _aiFeedback = null;
     });
 
-    // Mock API call for week 1
-    //TODO::Connect to Python/OpenAI in Week 2
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      // Replace with backend API endpoint
+      // Note: if running on Windows desktop/web, 'http://127.0.0.1:8000/api/journal/analyze'
+      final url = Uri.parse('http://127.0.0.1:8000/api/journal/analyze');
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'entry_txt': text}), // Matches my Pydantic model
+      );
+
+      if(response.statusCode == 200){
+        final data = jsonDecode(response.body);
+        setState(() {
+          _sentimentResults = data['Sentiment_summary'] ?? "Analyzed Successfully";
+          _aiFeedback = data['ai_feedback'];
+        });
+      } else {
+        setState(() {
+          _aiFeedback = "Error from server: ${response.statusCode}";
+        });
+      }
+    } catch (e){
+      setState(() {
+        _aiFeedback = "Could not connect to backend server. Make sure uvicorn is running and accessible. \nDetails: $e";
+      });
+    } finally{
       setState(() {
         _isAnalyzing = false;
-        _sentimentResults = "Positive / Reflective (Score: +0.78)";
-        _aiFeedback = 
-          "It sounds like you had a productive day working through challenges. "
-          "Acknowledging your small wins is a great practice for emotional resilience!";
       });
-    });
+    }
+
   }
 
   @override
