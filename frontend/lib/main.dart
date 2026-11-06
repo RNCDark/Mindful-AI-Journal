@@ -68,7 +68,7 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
 
         setState(() {
           // Correctly map model/summary to UI
-          _sentimentResults = "${sentimentData['sentiment']}" "(${sentimentData['emotional_score']}/10)";
+          _sentimentResults = "${sentimentData['sentiment']}" " (${sentimentData['emotional_score']}/10)";
           _aiFeedback = data['ai_feedback'] ?? "No feedback provided.";
         });
       } else {
