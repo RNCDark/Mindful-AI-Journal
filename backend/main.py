@@ -1,4 +1,5 @@
 import os
+import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -60,7 +61,7 @@ def analyze_journal_entry(request: JournalEntryRequest):
             "unsupported assumptions about the user's emotional state."
         )
 
-        response = client.chat.completions.create(
+        response = client.chat.completions.parse(
             model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -84,5 +85,14 @@ def analyze_journal_entry(request: JournalEntryRequest):
             },
             "ai_feedback": analysis_result.personalized_reflection
         }
+    except HTTPException:
+        raise
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing the journal entry: {str(e)}")
+        print(f"Error analyzing journal entry: {e}")
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while analyzing the journal entry."
+        )
