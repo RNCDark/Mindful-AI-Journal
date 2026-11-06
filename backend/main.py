@@ -30,6 +30,11 @@ app.add_middleware(
 class JournalEntryRequest(BaseModel):
     entry_txt: str
 
+class JournalAnalysis(BaseModel):
+    sentiment: str
+    emotional_score: int
+    personalized_reflection: str
+
 @app.get("/")
 def read_root():
     return {"status": "Backend is running successfully!"}
@@ -42,11 +47,17 @@ def analyze_journal_entry(request: JournalEntryRequest):
     try:
         # Prompt engineering the gpt-4o-mini model for sentiment and feedback
         system_prompt = (
-            "You are a empathetic AI journaling assistant and mental health wellness companion. "
-            "Analyze the user's journal entry. Provide a detected sentiment classification "
-            "(e.g., Positive, Reflective, Neutral, Stressed) with an emotional score, "
-            "and write a short, supportive, and constructive personalized reflection or feedback statement. "
-            "Return the response in clear plain text seperated into section or as a structured response."
+            "You are an empathetic AI journaling assistant "
+            "focused on emotional wellness and self-reflection. "
+            "Analyze the user's journal entry and classify its overall "
+            "sentiment as Positive, Reflective, Neutral, or Stressed. "
+            "Assign an emotional score from 1 to 10, where 1 represents "
+            "very negative emotional tone and 10 represents very positive "
+            "emotional tone. "
+            "Provide a short, supportive, constructive personalized "
+            "reflection that acknowledges the user's experiences. "
+            "Avoid diagnosing mental health conditions or making "
+            "unsupported assumptions about the user's emotional state."
         )
 
         response = client.chat.completions.create(
@@ -55,16 +66,23 @@ def analyze_journal_entry(request: JournalEntryRequest):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": request.entry_txt}
             ],
+            response_format=JournalAnalysis,
             max_tokens=300,
             temperature=0.7
         )
 
-        ai_output = response.choices[0].message.content
+        analysis_result = response.choices[0].message.parsed  # Assuming the response is parsed into JournalAnalysis model
+
+        if analysis_result is None:
+            raise HTTPException(status_code=502, detail="Failed to parse the AI response.")
 
         return {
             "status": "success",
-            "Sentiment_summary": "Analyzed via gpt-4o-mini model",
-            "ai_feedback": ai_output
+            "Sentiment_summary": {
+                "sentiment": analysis_result.sentiment,
+                "emotional_score": analysis_result.emotional_score,
+            },
+            "ai_feedback": analysis_result.personalized_reflection
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing the journal entry: {str(e)}")

@@ -64,19 +64,12 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
       if(response.statusCode == 200){
         final data = jsonDecode(response.body);
 
-        String rawFeedback = data['ai_feedback'] ?? "No feedback provided.";
-
-        // Strip out the markdown headers so only the content remains
-        String cleanedFeedback = rawFeedback
-            .replaceAll(RegExp(r'\*\*Sentiment Classification:\*\*.*?\n', caseSensitive: false), '')
-            .replaceAll(RegExp(r'\*\*Emotional Score:\*\*.*?\n', caseSensitive: false), '')
-            .replaceAll(RegExp(r'\*\*Personalized Reflection:\*\*.*?\n', caseSensitive: false), '')
-            .trim();
+        final sentimentData = data['Sentiment_summary'];
 
         setState(() {
-          // Correctly map model/summary to the sentiment results and cleaned feedback to the AI feedback
-          _sentimentResults = data['Sentiment_summary'] ?? "Analyzed Successfully";
-          _aiFeedback = cleanedFeedback.isEmpty ? cleanedFeedback : rawFeedback; // Fallback to raw feedback if cleaned is empty
+          // Correctly map model/summary to UI
+          _sentimentResults = "${sentimentData['sentiment']}" "(${sentimentData['emotional_score']}/10)";
+          _aiFeedback = data['ai_feedback'] ?? "No feedback provided.";
         });
       } else {
         setState(() {
