@@ -55,7 +55,6 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
       // Replace with backend API endpoint
       // Note: if running on Windows desktop/web, 'http://127.0.0.1:8000/api/journal/analyze'
       final url = Uri.parse('http://127.0.0.1:8000/api/journal/analyze');
-
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -64,18 +63,30 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
 
       if(response.statusCode == 200){
         final data = jsonDecode(response.body);
+
+        String rawFeedback = data['ai_feedback'] ?? "No feedback provided.";
+
+        // Strip out the markdown headers so only the content remains
+        String cleanedFeedback = rawFeedback
+            .replaceAll(RegExp(r'\*\*Sentiment Classification:\*\*.*?\n', caseSensitive: false), '')
+            .replaceAll(RegExp(r'\*\*Emotional Score:\*\*.*?\n', caseSensitive: false), '')
+            .replaceAll(RegExp(r'\*\*Personalized Reflection:\*\*.*?\n', caseSensitive: false), '')
+            .trim();
+
         setState(() {
+          // Correctly map model/summary to the sentiment results and cleaned feedback to the AI feedback
           _sentimentResults = data['Sentiment_summary'] ?? "Analyzed Successfully";
-          _aiFeedback = data['ai_feedback'];
+          _aiFeedback = cleanedFeedback.isEmpty ? cleanedFeedback : rawFeedback; // Fallback to raw feedback if cleaned is empty
         });
       } else {
         setState(() {
-          _aiFeedback = "Error from server: ${response.statusCode}";
+          _showErrorSnackBar("Server error: ${response.statusCode}. Failed to analyze journal entry. Please try again later.");
         });
       }
     } catch (e){
       setState(() {
-        _aiFeedback = "Could not connect to backend server. Make sure uvicorn is running and accessible. \nDetails: $e";
+        // Network timeout, connection refused, or other network-related issues
+        _showErrorSnackBar("Could not connect to backend server. Make sure uvicorn is running and accessible. \nDetails: $e");
       });
     } finally{
       setState(() {
@@ -83,6 +94,18 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
       });
     }
 
+  }
+
+  // Helper method to display a bottom SnackBar
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   @override
