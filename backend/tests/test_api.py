@@ -1,6 +1,9 @@
 from fastapi.testclient import TestClient
 from main import app
+from main import JournalAnalysis
 from unittest.mock import patch, MagicMock
+import pytest
+from pydantic import ValidationError
 
 # Create a TestClient instance for testing the FastAPI app
 test_client = TestClient(app)
@@ -116,3 +119,38 @@ def test_ai_exception_handling(mock_parse):
 
     # Verify the OpenAI method was called once
     mock_parse.assert_called_once()
+
+def test_valid_analysis_schema():
+    # Create a valid JournalAnalysis instance
+    analysis = JournalAnalysis(
+        sentiment="Positive",
+        emotional_score=10,
+        personalized_reflection="You made great progress today! Keep up the positive momentum."
+    )
+
+    assert analysis.sentiment == "Positive"
+    assert analysis.emotional_score == 10
+    assert analysis.personalized_reflection == "You made great progress today! Keep up the positive momentum."
+
+@pytest.mark.parametrize("score", [0, -1, 11, 100])
+def test_invalid_emotional_score(score):
+    # Test that creating a JournalAnalysis with an invalid emotional score raises a ValidationError
+    with pytest.raises(ValidationError):
+        JournalAnalysis(
+            sentiment="Positive",
+            emotional_score=score,
+            personalized_reflection="This is a test reflection."
+        )
+
+@pytest.mark.parametrize(
+    "sentiment",
+    ["Unknown", "Happy", "Sad", ""]
+)
+def test_invalid_sentiment(sentiment):
+    # Test that creating a JournalAnalysis with an invalid sentiment raises a ValidationError
+    with pytest.raises(ValidationError):
+        JournalAnalysis(
+            sentiment=sentiment,
+            emotional_score=5,
+            personalized_reflection="This is a test reflection."
+        )

@@ -2,9 +2,10 @@ import os
 import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from openai import OpenAI
 from dotenv import load_dotenv
+from typing import Literal
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,8 +33,13 @@ class JournalEntryRequest(BaseModel):
     entry_txt: str
 
 class JournalAnalysis(BaseModel):
-    sentiment: str
-    emotional_score: int
+    sentiment: Literal[
+        "Positive", 
+        "Reflective", 
+        "Neutral", 
+        "Stressed"
+    ]
+    emotional_score: int = Field(ge=1, le=10, description="Emotional score from 1 to 10")
     personalized_reflection: str
 
 @app.get("/")
