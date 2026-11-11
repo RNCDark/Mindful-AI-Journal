@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'journal_api_service.dart';
 
@@ -25,7 +24,9 @@ class AIJournal extends StatelessWidget {
 }
 
 class JournalHomeScreen extends StatefulWidget {
-  const JournalHomeScreen({super.key});
+  const JournalHomeScreen({super.key, this.journalService});
+
+  final JournalApiService? journalService;
 
   @override
   State<JournalHomeScreen> createState() => _JournalHomeScreenState();
@@ -33,10 +34,34 @@ class JournalHomeScreen extends StatefulWidget {
 
 class _JournalHomeScreenState extends State<JournalHomeScreen>{
   final TextEditingController _entryController = TextEditingController();
-  final JournalApiService _journalService = JournalApiService(client: http.Client());
+  late final JournalApiService _journalService;
+  http.Client? _ownedClient;
   bool _isAnalyzing = false;
   String? _sentimentResults;
   String? _aiFeedback;
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.journalService != null) {
+      _journalService = widget.journalService!;
+    } else {
+      _ownedClient = http.Client();
+      _journalService = JournalApiService(
+        client: _ownedClient!,
+      );
+    }
+  }
+
+
+  @override
+  void dispose() {
+    _entryController.dispose();
+    _ownedClient?.close();
+    super.dispose();
+  }
+
 
   Future<void> _submitEntry() async {
     final  text = _entryController.text.trim();
@@ -71,16 +96,20 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
         _aiFeedback = data['ai_feedback'] ?? "No feedback provided.";
       });
     } catch (e){
-      setState(() {
-        // Network timeout, connection refused, or other network-related issues
-        _showErrorSnackBar("Could not connect to backend server. Make sure uvicorn is running and accessible. \nDetails: $e");
-      });
-    } finally{
-      setState(() {
-        _isAnalyzing = false;
-      });
-    }
+      if (!mounted) return;
 
+      _showErrorSnackBar(
+        "Failed to analyze journal entry. "
+        "Please check your connection or try again.\n"
+        "Details: $e",
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+        });
+      }
+    }
   }
 
   // Helper method to display a bottom SnackBar
