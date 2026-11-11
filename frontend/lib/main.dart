@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'journal_api_service.dart';
 
 void main() {
   runApp(const AIJournal());
@@ -32,6 +33,7 @@ class JournalHomeScreen extends StatefulWidget {
 
 class _JournalHomeScreenState extends State<JournalHomeScreen>{
   final TextEditingController _entryController = TextEditingController();
+  final JournalApiService _journalService = JournalApiService(client: http.Client());
   bool _isAnalyzing = false;
   String? _sentimentResults;
   String? _aiFeedback;
@@ -54,28 +56,20 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
     try {
       // Replace with backend API endpoint
       // Note: if running on Windows desktop/web, 'http://127.0.0.1:8000/api/journal/analyze'
-      final url = Uri.parse('http://127.0.0.1:8000/api/journal/analyze');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'entry_txt': text}), // Matches my Pydantic model
-      );
+      // Update: Use the JournalApiService to handle the API call
+      final data = await _journalService.analyzeEntry(text);
 
-      if(response.statusCode == 200){
-        final data = jsonDecode(response.body);
+      if (!mounted) return;
 
-        final sentimentData = data['Sentiment_summary'];
+      final sentimentData = data['Sentiment_summary'];
 
-        setState(() {
-          // Correctly map model/summary to UI
-          _sentimentResults = "${sentimentData['sentiment']}" " (${sentimentData['emotional_score']}/10)";
-          _aiFeedback = data['ai_feedback'] ?? "No feedback provided.";
-        });
-      } else {
-        setState(() {
-          _showErrorSnackBar("Server error: ${response.statusCode}. Failed to analyze journal entry. Please try again later.");
-        });
-      }
+      setState(() {
+        _sentimentResults =
+            "${sentimentData['sentiment']} "
+            "(${sentimentData['emotional_score']}/10)";
+
+        _aiFeedback = data['ai_feedback'] ?? "No feedback provided.";
+      });
     } catch (e){
       setState(() {
         // Network timeout, connection refused, or other network-related issues
