@@ -70,3 +70,49 @@ def test_valid_journal_entry(mock_parse):
 
     # Verify the OpenAI method was called once
     mock_parse.assert_called_once()
+
+@patch("main.client.chat.completions.parse")
+def test_ai_parsing_failure(mock_parse):
+    # Simulate a response where parsing fails (returns None)
+    mock_response = MagicMock()
+    mock_response.choices[0].message.parsed = None
+
+    mock_parse.return_value = mock_response
+
+    response = test_client.post(
+        "/api/journal/analyze", 
+        json={
+            "entry_txt": "I have been feeling uncertain today."
+        }
+    )
+
+    # Verify the backend returns a gateway error due to parsing failure
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Failed to parse the AI response."}
+
+    # Verify the OpenAI method was called once
+    mock_parse.assert_called_once()
+
+@patch("main.client.chat.completions.parse")
+def test_ai_exception_handling(mock_parse):
+    # Simulate an exception being raised by the OpenAI client
+    mock_parse.side_effect = Exception("Simulated API failure")
+
+    response = test_client.post(
+        "/api/journal/analyze", 
+        json={
+            "entry_txt": "I am feeling anxious about my upcoming presentation."
+        }
+    )
+
+    # Verify that the backend returns a 500 Internal Server Error due to the exception
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": (
+            "An unexpected error occurred while "
+            "analyzing the journal entry."
+        )
+    }
+
+    # Verify the OpenAI method was called once
+    mock_parse.assert_called_once()
