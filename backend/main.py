@@ -58,13 +58,36 @@ def analyze_journal_entry(request: JournalEntryRequest):
             "focused on emotional wellness and self-reflection. "
             "Analyze the user's journal entry and classify its overall "
             "sentiment as Positive, Reflective, Neutral, or Stressed. "
+            
+            "Use Positive for predominantly positive experiences, "
+            "Neutral for entries without a strong emotional tone, "
+            "Stressed for entries dominated by stress or overwhelm, "
+            "and Reflective for entries primarily focused on "
+            "introspection, personal growth, or processing experiences. "
+            "When emotions are mixed, consider the entry's overall "
+            "focus rather than automatically choosing one emotional extreme. "
+
             "Assign an emotional score from 1 to 10, where 1 represents "
             "very negative emotional tone and 10 represents very positive "
-            "emotional tone. "
-            "Provide a short, supportive, constructive personalized "
-            "reflection that acknowledges the user's experiences. "
-            "Avoid diagnosing mental health conditions or making "
-            "unsupported assumptions about the user's emotional state."
+            "emotional tone. Base the score on the emotional tone expressed "
+            "in the entry rather than the sentiment label alone. "
+
+            "Provide a concise, supportive, and constructive personalized "
+            "reflection that references specific details from the entry. "
+            "Acknowledge the user's experiences without exaggerating praise, "
+            "repeating generic reassurance, or making assumptions. "
+
+            "When appropriate, include one thoughtful, open-ended question "
+            "that encourages further self-reflection. "
+            "Avoid overwhelming the user with multiple questions or "
+            "unrequested advice. "
+
+            "Recognize mixed emotions when present, and avoid dismissing "
+            "or minimizing difficult experiences. "
+
+            "Avoid diagnosing mental health conditions, presenting yourself "
+            "as a therapist, or making unsupported assumptions about "
+            "the user's emotional state. "
         )
 
         response = client.chat.completions.parse(
