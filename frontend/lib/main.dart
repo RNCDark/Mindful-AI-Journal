@@ -34,6 +34,7 @@ class JournalHomeScreen extends StatefulWidget {
 
 class _JournalHomeScreenState extends State<JournalHomeScreen>{
   final TextEditingController _entryController = TextEditingController();
+  final TextEditingController _accessCodeController = TextEditingController();
   late final JournalApiService _journalService;
   http.Client? _ownedClient;
   bool _isAnalyzing = false;
@@ -58,6 +59,7 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
   @override
   void dispose() {
     _entryController.dispose();
+    _accessCodeController.dispose();
     _ownedClient?.close();
     super.dispose();
   }
@@ -65,10 +67,17 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
 
   Future<void> _submitEntry() async {
     final  text = _entryController.text.trim();
+    final accessCode = _accessCodeController.text.trim();
+
     if(text.isEmpty){
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter your journal entry before submitting.")),
       );
+      return;
+    }
+
+    if(accessCode.isEmpty){
+      _showErrorSnackBar("Please enter your participant access code.");
       return;
     }
 
@@ -82,7 +91,7 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
       // Replace with backend API endpoint
       // Note: if running on Windows desktop/web, 'http://127.0.0.1:8000/api/journal/analyze'
       // Update: Use the JournalApiService to handle the API call
-      final data = await _journalService.analyzeEntry(text);
+      final data = await _journalService.analyzeEntry(text, accessCode: accessCode);
 
       if (!mounted) return;
 
@@ -148,10 +157,42 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
             ),
             const SizedBox(height: 16,),
+            // Participant Access Code Input
+            TextField(
+              controller: _accessCodeController,
+              obscureText: true,
+              enabled: !_isAnalyzing,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(
+                labelText: "Participant Access Code",
+                hintText: "Enter your access code",
+                helperText: "Provided by the researcher.",
+                prefixIcon: const Icon(Icons.lock_outline),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Research prototype: Journal entries are sent to an external "
+              "AI service for analysis. Please use fictional or non-sensitive "
+              "entries and avoid including personally identifiable information.",
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 12),
             //Journal Entry Input
             TextField(
               controller: _entryController,
               maxLines: 10,
+              maxLength: 5000,
+              enabled: !_isAnalyzing,
               decoration: InputDecoration(
                 hintText: "Start typing your journal entry here...",
                 border: OutlineInputBorder(
@@ -180,7 +221,7 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
               )
               : const Icon(Icons.psychology),
               label: Text(
-                _isAnalyzing ? "Analyzing Entry..." : "Analyze & Save Entry",
+                _isAnalyzing ? "Analyzing Entry..." : "Analyze Entry",
                 style: const TextStyle(fontSize: 16),
               ),
             ),
