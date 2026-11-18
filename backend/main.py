@@ -19,18 +19,21 @@ client = OpenAI(api_key=api_key)
 
 app = FastAPI(title="Mindful AI Journal Backend", version="1.0")
 
+# Configure allowed frontend origins
+allowed_origins = os.getenv("ALLOWED ORIGINS", "*").split(",")
+
 # Enable CORS for frontend development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this in production for security. Allows all origins for local testing.
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=allowed_origins,  # Adjust this in production for security. Allows all origins for local testing.
+    allow_credentials=False,
+    allow_methods=["GET", 'POST'],
+    allow_headers=["Content-Type"],
 )
 
 # Request schema from the frontend
 class JournalEntryRequest(BaseModel):
-    entry_txt: str
+    entry_txt: str = Field(max_length=5000) # Preliminary prevention for human testing
 
 class JournalAnalysis(BaseModel):
     sentiment: Literal[
