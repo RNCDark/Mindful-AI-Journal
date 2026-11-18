@@ -1,11 +1,15 @@
 import os
 import traceback
-from fastapi import FastAPI, HTTPException
+import secrets
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from openai import OpenAI
 from dotenv import load_dotenv
 from typing import Literal
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 # Load environment variables from .env file
 load_dotenv()
@@ -19,8 +23,22 @@ client = OpenAI(api_key=api_key)
 
 app = FastAPI(title="Mindful AI Journal Backend", version="1.0")
 
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler
+)
+
+participant_access_code = os.getenv("PARTICIPANT_ACCESS_CODE")
+
+if not participant_access_code:
+    raise ValueError("PARTICIPANT_ACCESS_CODE is not set.")
+
 # Configure allowed frontend origins
-allowed_origins = os.getenv("ALLOWED ORIGINS", "*").split(",")
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
 # Enable CORS for frontend development
 app.add_middleware(
@@ -28,7 +46,7 @@ app.add_middleware(
     allow_origins=allowed_origins,  # Adjust this in production for security. Allows all origins for local testing.
     allow_credentials=False,
     allow_methods=["GET", 'POST'],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-Access-Code"],
 )
 
 # Request schema from the frontend
@@ -50,8 +68,19 @@ def read_root():
     return {"status": "Backend is running successfully!"}
 
 @app.post("/api/journal/analyze")
-def analyze_journal_entry(request: JournalEntryRequest):
-    if not request.entry_txt.strip():
+@limiter.limit("5/minute")
+def analyze_journal_entry(request: Request, journal_entry: JournalEntryRequest, x_access_code: str = Header(default="")):
+    if not secrets.compare_digest(
+        x_access_code.encode("utf-8"),
+        participant_access_code.encode("utf-8")
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid participant access code."
+        )
+
+
+    if not journal_entry.entry_txt.strip():
         raise HTTPException(status_code=400, detail="Journal entry text cannot be empty.")
 
     try:
@@ -97,7 +126,7 @@ def analyze_journal_entry(request: JournalEntryRequest):
             model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": request.entry_txt}
+                {"role": "user", "content": journal_entry.entry_txt}
             ],
             response_format=JournalAnalysis,
             max_tokens=300,
