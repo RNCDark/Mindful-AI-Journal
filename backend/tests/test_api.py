@@ -1,12 +1,33 @@
 from fastapi.testclient import TestClient
-from main import app
-from main import JournalAnalysis
+from main import app, JournalAnalysis, limiter
 from unittest.mock import patch, MagicMock
 import pytest
 from pydantic import ValidationError
 
 # Create a TestClient instance for testing the FastAPI app
-test_client = TestClient(app)
+TEST_ACCESS_CODE = "test-participant-code"
+
+test_client = TestClient(
+    app,
+    headers={"X-Access-Code": TEST_ACCESS_CODE}
+)
+
+
+@pytest.fixture(autouse=True)
+def configure_test_environment(monkeypatch):
+    # Replace the actual participant code during testing
+    monkeypatch.setattr(
+        "main.participant_access_code",
+        TEST_ACCESS_CODE
+    )
+
+    # Reset rate limiting before each test
+    limiter.reset()
+
+    yield
+
+    # Clean up rate limiting after each test
+    limiter.reset()
 
 
 def test_root_endpoint():
@@ -154,3 +175,85 @@ def test_invalid_sentiment(sentiment):
             emotional_score=5,
             personalized_reflection="This is a test reflection."
         )
+
+@patch("main.client.chat.completions.parse")
+def test_missing_access_code(mock_parse):
+    # Use a separate client without a default access code
+    with TestClient(app) as unauthorized_client:
+        response = unauthorized_client.post(
+            "/api/journal/analyze",
+            json={"entry_txt": "Today was a productive day."}
+        )
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Invalid participant access code."
+    }
+
+    # Verify the unauthorized request never reaches OpenAI
+    mock_parse.assert_not_called()
+
+@patch("main.client.chat.completions.parse")
+def test_invalid_access_code(mock_parse):
+    response = test_client.post(
+        "/api/journal/analyze",
+        headers={"X-Access-Code": "incorrect-code"},
+        json={"entry_txt": "Today was a productive day."}
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Invalid participant access code."
+    }
+
+    mock_parse.assert_not_called()
+
+@patch("main.client.chat.completions.parse")
+def test_oversized_journal_entry(mock_parse):
+    response = test_client.post(
+        "/api/journal/analyze",
+        json={"entry_txt": "a" * 5001}
+    )
+
+    assert response.status_code == 422
+
+    errors = response.json()["detail"]
+
+    assert errors[0]["type"] == "string_too_long"
+    assert "entry_txt" in errors[0]["loc"]
+
+    mock_parse.assert_not_called()
+
+@patch("main.client.chat.completions.parse")
+def test_rate_limit_exceeded(mock_parse):
+    # Simulate a valid AI analysis
+    mock_analysis = JournalAnalysis(
+        sentiment="Positive",
+        emotional_score=8,
+        personalized_reflection="You had a productive day."
+    )
+
+    mock_response = MagicMock()
+    mock_response.choices[0].message.parsed = mock_analysis
+
+    mock_parse.return_value = mock_response
+
+    # First five requests should succeed
+    for _ in range(5):
+        response = test_client.post(
+            "/api/journal/analyze",
+            json={"entry_txt": "Today was a productive day."}
+        )
+
+        assert response.status_code == 200
+
+    # Sixth request should exceed the rate limit
+    response = test_client.post(
+        "/api/journal/analyze",
+        json={"entry_txt": "Today was a productive day."}
+    )
+
+    assert response.status_code == 429
+
+    # Only the first five requests should reach OpenAI
+    assert mock_parse.call_count == 5
