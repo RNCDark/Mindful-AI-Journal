@@ -10,12 +10,12 @@ class JournalApiService {
     this.baseUrl = 'https://mindful-ai-journal.onrender.com',
   });
 
-  Future<Map<String, dynamic>> analyzeEntry(String entryText) async {
+  Future<Map<String, dynamic>> analyzeEntry(String entryText, {required String accessCode}) async {
     final url = Uri.parse('$baseUrl/api/journal/analyze');
 
     final response = await client.post(
       url,
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json', 'X-Access-Code': accessCode},
       body: jsonEncode({'entry_txt': entryText}),
     );
 
@@ -29,6 +29,14 @@ class JournalApiService {
       }
 
       return data;
+    }
+
+    if(response.statusCode == 401){
+      throw Exception('Invalid participant acess code.');
+    }
+
+    if(response.statusCode == 429){
+      throw Exception('Too many requests. Please wait before trying again.');
     }
 
     throw Exception(
