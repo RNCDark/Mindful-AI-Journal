@@ -8,6 +8,19 @@ import 'package:journal_ai/journal_api_service.dart';
 import 'dart:async';
 
 void main(){
+  const testAccessCode = 'test-participant-code';
+
+  final accessCodeFinder = find.byKey(
+    const Key('participantAccessCodeField'),
+  );
+
+  final journalEntryFinder = find.byKey(
+    const Key('journalEntryField'),
+  );
+
+
+  final submitButtonFinder = find.text('Analyze Entry');
+
   group('Journal Widget Tests', (){
     testWidgets(
       'FW-01: Journal screen renders correctly',
@@ -30,15 +43,31 @@ void main(){
           findsOneWidget,
         );
 
-        // Verify the journal input field
+        // Verify both input fields are present
+        expect(find.byType(TextField), findsNWidgets(2));
+
+        // Verify participant access-code input
+        expect(accessCodeFinder, findsOneWidget);
+
+        // Verify journal entry input
+        expect(journalEntryFinder, findsOneWidget);
+
+        // Verify access code is masked
+        final accessCodeField = tester.widget<TextField>(
+          accessCodeFinder,
+        );
+
+        expect(accessCodeField.obscureText, isTrue);
+
+        // Verify research privacy notice
         expect(
-          find.byType(TextField),
+          find.textContaining('Research prototype:'),
           findsOneWidget,
         );
 
         // Verify the submission button
         expect(
-          find.text('Analyze & Save Entry'),
+          submitButtonFinder,
           findsOneWidget,
         );
 
@@ -65,7 +94,8 @@ void main(){
         );
 
         // Find and press the submit button without entering text
-        await tester.tap(find.text('Analyze & Save Entry'));
+        await tester.ensureVisible(submitButtonFinder);
+        await tester.tap(submitButtonFinder);
 
         // Allow Flutter to process the UI update
         await tester.pump();
@@ -103,6 +133,11 @@ void main(){
             'I had a wonderful day today.',
           );
 
+          expect(
+            request.headers['x-access-code'],
+            testAccessCode,
+          );
+
           return http.Response(
             jsonEncode({
               'status': 'success',
@@ -130,15 +165,22 @@ void main(){
           ),
         );
 
+        // Enter participant access code
+        await tester.enterText(
+          accessCodeFinder,
+          testAccessCode,
+        );
+
         // Enter a journal entry
         await tester.enterText(
-          find.byType(TextField),
+          journalEntryFinder,
           'I had a wonderful day today.',
         );
 
         // Submit the entry
+        await tester.ensureVisible(submitButtonFinder);
         await tester.tap(
-          find.text('Analyze & Save Entry'),
+          submitButtonFinder,
         );
 
         // Wait for the async request and UI updates
@@ -170,7 +212,7 @@ void main(){
 
         // Verify the button returns to its normal state
         expect(
-          find.text('Analyze & Save Entry'),
+          submitButtonFinder,
           findsOneWidget,
         );
 
@@ -203,15 +245,22 @@ void main(){
           ),
         );
 
+        // Enter participant access code
+        await tester.enterText(
+          accessCodeFinder,
+          testAccessCode,
+        );
+
         // Enter a valid journal entry
         await tester.enterText(
-          find.byType(TextField),
+          journalEntryFinder,
           'I feel productive today.',
         );
 
         // Submit the entry
+        await tester.ensureVisible(submitButtonFinder);
         await tester.tap(
-          find.text('Analyze & Save Entry'),
+          submitButtonFinder,
         );
 
         // Process the loading-state update
@@ -240,6 +289,17 @@ void main(){
         expect(button.onPressed, isNull);
         expect(requestCount, 1);
 
+        // Verify both input fields are disabled
+        expect(
+          tester.widget<TextField>(accessCodeFinder).enabled,
+          isFalse,
+        );
+
+        expect(
+          tester.widget<TextField>(journalEntryFinder).enabled,
+          isFalse,
+        );
+
         // Complete the simulated API request
         completer.complete(
           http.Response(
@@ -262,10 +322,21 @@ void main(){
           buttonFinder,
         );
 
+        // Verify both input fields are enabled again
+        expect(
+          tester.widget<TextField>(accessCodeFinder).enabled,
+          isTrue,
+        );
+
+        expect(
+          tester.widget<TextField>(journalEntryFinder).enabled,
+          isTrue,
+        );
+
         expect(updatedButton.onPressed, isNotNull);
 
         expect(
-          find.text('Analyze & Save Entry'),
+          submitButtonFinder,
           findsOneWidget,
         );
 
@@ -301,15 +372,21 @@ void main(){
           ),
         );
 
+        await tester.enterText(
+          accessCodeFinder,
+          testAccessCode,
+        );
+
         // Enter a valid journal entry
         await tester.enterText(
-          find.byType(TextField),
+          journalEntryFinder,
           'I am feeling overwhelmed today.',
         );
 
         // Submit the entry
+        await tester.ensureVisible(submitButtonFinder);
         await tester.tap(
-          find.text('Analyze & Save Entry'),
+          submitButtonFinder,
         );
 
         // Allow the request and error UI to update
@@ -349,6 +426,70 @@ void main(){
         expect(button.onPressed, isNotNull);
 
         mockClient.close();
+      },
+    );
+
+    testWidgets(
+      'FW-06: Missing participant access code displays warning',
+      (WidgetTester tester) async {
+        var requestCount = 0;
+
+        final mockClient = MockClient((request) async {
+          requestCount++;
+
+          return http.Response(
+            'Unexpected API request',
+            500,
+          );
+        });
+
+        final journalService = JournalApiService(
+          client: mockClient,
+        );
+
+        addTearDown(mockClient.close);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: JournalHomeScreen(
+              journalService: journalService,
+            ),
+          ),
+        );
+
+        // Enter journal text without an access code
+        await tester.enterText(
+          journalEntryFinder,
+          'I had a productive day today.',
+        );
+
+        // Submit the journal entry
+        await tester.ensureVisible(submitButtonFinder);
+        await tester.tap(submitButtonFinder);
+
+        await tester.pumpAndSettle();
+
+        // Verify access-code warning
+        expect(
+          find.text(
+            'Please enter your participant access code.',
+          ),
+          findsOneWidget,
+        );
+
+        // Verify no backend request was made
+        expect(requestCount, 0);
+
+        // Verify no analysis results appear
+        expect(
+          find.text('Detected Sentiment'),
+          findsNothing,
+        );
+
+        expect(
+          find.text('AI Insights & Reflection'),
+          findsNothing,
+        );
       },
     );
   });
