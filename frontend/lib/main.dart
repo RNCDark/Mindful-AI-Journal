@@ -159,6 +159,7 @@ class _JournalHomeScreenState extends State<JournalHomeScreen> {
             const SizedBox(height: 16),
             // Participant Access Code Input
             TextField(
+              key: const Key('participantAccessCodeField'),
               controller: _accessCodeController,
               obscureText: true,
               enabled: !_isAnalyzing,
@@ -186,6 +187,7 @@ class _JournalHomeScreenState extends State<JournalHomeScreen> {
             const SizedBox(height: 12),
             //Journal Entry Input
             TextField(
+              key: const Key('journalEntryField'),
               controller: _entryController,
               maxLines: 10,
               maxLength: 5000,
