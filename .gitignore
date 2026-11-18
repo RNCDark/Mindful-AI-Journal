@@ -26,7 +26,7 @@ migrate_working_dir/
 # Flutter/Dart/Pub related
 **/doc/api/
 **/build/
-**.dart_tool/
+**/.dart_tool/
 **/.pub/
 .packages
 .flutter-plugins
@@ -51,6 +51,7 @@ backend/.env
 
 # Python cache and virtual environments
 __pycache__/
+.pytest_cache/
 venv/
 .venv/
 *.pyc
