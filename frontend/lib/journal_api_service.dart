@@ -7,7 +7,7 @@ class JournalApiService {
 
   JournalApiService({
     required this.client,
-    this.baseUrl = 'http://127.0.0.1:8000',
+    this.baseUrl = 'https://mindful-ai-journal.onrender.com',
   });
 
   Future<Map<String, dynamic>> analyzeEntry(String entryText) async {
