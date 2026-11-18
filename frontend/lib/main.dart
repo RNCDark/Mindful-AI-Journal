@@ -17,8 +17,8 @@ class AIJournal extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
-        ),
-        home: JournalHomeScreen(),
+      ),
+      home: JournalHomeScreen(),
     );
   }
 }
@@ -32,7 +32,7 @@ class JournalHomeScreen extends StatefulWidget {
   State<JournalHomeScreen> createState() => _JournalHomeScreenState();
 }
 
-class _JournalHomeScreenState extends State<JournalHomeScreen>{
+class _JournalHomeScreenState extends State<JournalHomeScreen> {
   final TextEditingController _entryController = TextEditingController();
   final TextEditingController _accessCodeController = TextEditingController();
   late final JournalApiService _journalService;
@@ -49,12 +49,9 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
       _journalService = widget.journalService!;
     } else {
       _ownedClient = http.Client();
-      _journalService = JournalApiService(
-        client: _ownedClient!,
-      );
+      _journalService = JournalApiService(client: _ownedClient!);
     }
   }
-
 
   @override
   void dispose() {
@@ -64,19 +61,20 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
     super.dispose();
   }
 
-
   Future<void> _submitEntry() async {
-    final  text = _entryController.text.trim();
+    final text = _entryController.text.trim();
     final accessCode = _accessCodeController.text.trim();
 
-    if(text.isEmpty){
+    if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter your journal entry before submitting.")),
+        const SnackBar(
+          content: Text("Please enter your journal entry before submitting."),
+        ),
       );
       return;
     }
 
-    if(accessCode.isEmpty){
+    if (accessCode.isEmpty) {
       _showErrorSnackBar("Please enter your participant access code.");
       return;
     }
@@ -91,7 +89,10 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
       // Replace with backend API endpoint
       // Note: if running on Windows desktop/web, 'http://127.0.0.1:8000/api/journal/analyze'
       // Update: Use the JournalApiService to handle the API call
-      final data = await _journalService.analyzeEntry(text, accessCode: accessCode);
+      final data = await _journalService.analyzeEntry(
+        text,
+        accessCode: accessCode,
+      );
 
       if (!mounted) return;
 
@@ -104,7 +105,7 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
 
         _aiFeedback = data['ai_feedback'] ?? "No feedback provided.";
       });
-    } catch (e){
+    } catch (e) {
       if (!mounted) return;
 
       _showErrorSnackBar(
@@ -134,12 +135,9 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
   }
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mindful AI Journal'),
-        elevation: 2,
-      ),
+      appBar: AppBar(title: const Text('Mindful AI Journal'), elevation: 2),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -151,12 +149,14 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             //Spacer
-            const SizedBox(height: 8,),
+            const SizedBox(height: 8),
             Text(
               "Write down your thoughts below. AI feedback will generate automatically upon submission.",
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
             ),
-            const SizedBox(height: 16,),
+            const SizedBox(height: 16),
             // Participant Access Code Input
             TextField(
               controller: _accessCodeController,
@@ -181,10 +181,7 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
               "Research prototype: Journal entries are sent to an external "
               "AI service for analysis. Please use fictional or non-sensitive "
               "entries and avoid including personally identifiable information.",
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 12),
             //Journal Entry Input
@@ -196,10 +193,10 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
               decoration: InputDecoration(
                 hintText: "Start typing your journal entry here...",
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12)
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: Colors.grey[50]
+                fillColor: Colors.grey[50],
               ),
             ),
             const SizedBox(height: 16),
@@ -210,16 +207,16 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
               icon: _isAnalyzing
-              ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2,),
-              )
-              : const Icon(Icons.psychology),
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.psychology),
               label: Text(
                 _isAnalyzing ? "Analyzing Entry..." : "Analyze Entry",
                 style: const TextStyle(fontSize: 16),
@@ -227,10 +224,12 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
             ),
 
             // Week 1 Stub Output UI Cards
-            if(_sentimentResults != null) ...[
+            if (_sentimentResults != null) ...[
               Card(
                 color: Colors.teal[50],
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -239,23 +238,28 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
                       const Row(
                         children: [
                           Icon(Icons.analytics, color: Colors.teal),
-                          SizedBox(width: 8,),
+                          SizedBox(width: 8),
                           Text(
                             "Detected Sentiment",
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          )
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 8,),
-                      Text(_sentimentResults!)
+                      const SizedBox(height: 8),
+                      Text(_sentimentResults!),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 12,),
+              const SizedBox(height: 12),
               Card(
                 color: Colors.indigo[50],
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -263,21 +267,24 @@ class _JournalHomeScreenState extends State<JournalHomeScreen>{
                     children: [
                       const Row(
                         children: [
-                          Icon(Icons.auto_awesome, color: Colors.indigo,),
-                          SizedBox(width: 8,),
+                          Icon(Icons.auto_awesome, color: Colors.indigo),
+                          SizedBox(width: 8),
                           Text(
                             'AI Insights & Reflection',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8,),
+                      const SizedBox(height: 8),
                       Text(_aiFeedback!),
                     ],
                   ),
                 ),
-              )
-            ]
+              ),
+            ],
           ],
         ),
       ),
