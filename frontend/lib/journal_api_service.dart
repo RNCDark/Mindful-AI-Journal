@@ -36,7 +36,7 @@ class JournalApiService {
     }
 
     if (response.statusCode == 401) {
-      throw Exception('Invalid participant acess code.');
+      throw Exception('Invalid participant access code.');
     }
 
     if (response.statusCode == 429) {
